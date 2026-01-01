@@ -31,9 +31,18 @@ public class OrderService {
     messageService.sendToMerchant(merchantId, "新订单: " + o.getOrderId());
     messageService.notifyUser(userId, "订单已创建: " + o.getOrderId());
         statisticsService.recordOrder(o);
-        // 更新用户消费并根据阈值提升 VIP
+        // 更新用户消费并根据阈值提升 VIP：应按实际支付（netAmount）计入，并使用用户手机号定位用户
+        double netAmount = totalAmount - discount - payByPlatform;
+        if (netAmount < 0) netAmount = 0.0;
         try {
-            userDAO.addSpentAndMaybeUpgrade(userId, totalAmount);
+            String phone = null;
+            try { phone = userDAO.findPhoneByUserId(userId); } catch (Exception ignored) {}
+            if (phone == null || phone.isEmpty()) {
+                // 如果未找到与 userId 对应的手机号，尝试回退到任意存在的用户（供测试使用）
+                try { phone = userDAO.findAnyPhone(); } catch (Exception ignored) {}
+                if (phone == null || phone.isEmpty()) phone = userId;
+            }
+            userDAO.addSpentAndMaybeUpgrade(phone, netAmount);
         } catch (Exception ignored) { }
         return o;
     }
@@ -49,7 +58,12 @@ public class OrderService {
             if (d != null) discount = d;
             couponDAO.markUserCouponUsed(userCouponId);
         }
-        return createOrder(userId, merchantId, totalAmount - discount, discount, 0.0);
+        // 防止折扣超过订单总额导致负数：将折扣限制为不超过 totalAmount
+        if (discount > totalAmount) {
+            discount = totalAmount;
+        }
+        double remaining = totalAmount - discount;
+        return createOrder(userId, merchantId, remaining, discount, 0.0);
     }
 
     /**

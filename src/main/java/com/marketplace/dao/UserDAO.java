@@ -99,6 +99,38 @@ public class UserDAO {
      * 更新用户密码（用于将明文迁移为哈希）
      */
     public void updatePasswordByPhone(String phone, String hashed) throws SQLException {
-        //TODO
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement("UPDATE users SET password = ? WHERE phone = ?")) {
+            ps.setString(1, hashed);
+            ps.setString(2, phone);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * 根据用户 id 查找对应的 phone 字段，若找不到返回 null
+     */
+    public String findPhoneByUserId(String userId) throws SQLException {
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT phone FROM users WHERE id = ?")) {
+            ps.setString(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getString(1);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 返回任意存在的用户手机号（用于回退策略），找不到返回 null
+     */
+    public String findAnyPhone() throws SQLException {
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT phone FROM users LIMIT 1")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getString(1);
+            }
+        }
+        return null;
     }
 }
