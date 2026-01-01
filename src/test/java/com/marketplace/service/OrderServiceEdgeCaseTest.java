@@ -130,6 +130,76 @@ public class OrderServiceEdgeCaseTest {
     }
 
     @Test
+    public void testCreateOrder_updates_user_spent_by_net_amount() throws SQLException {
+        // 插入一个用户（phone 字段为数值形式），期望用户消费应按实际支付（扣除折扣与平台补贴）计入
+        String phone = "10000000009";
+        try (java.sql.Connection conn = DBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement("INSERT OR REPLACE INTO users (id, username, phone, password, vip, login_count, last_login, total_spent) VALUES (?,?,?,?,?,?,?,?)")) {
+            ps.setString(1, "u-db-1");
+            ps.setString(2, "Tester");
+            ps.setString(3, phone);
+            ps.setString(4, "pwd");
+            ps.setString(5, "NORMAL");
+            ps.setInt(6, 0);
+            ps.setString(7, null);
+            ps.setDouble(8, 0.0);
+            ps.executeUpdate();
+        }
+
+        OrderService svc = new OrderService();
+        // 下单：total=100, discount=10, payByPlatform=5 -> 实付 85
+        svc.createOrder("u-100", "m1", 100.0, 10.0, 5.0);
+
+        // 期望用户 phone=10000000009 的 total_spent 增加 85（实际代码会错误地使用其他标识或原始金额）
+        try (java.sql.Connection conn = DBUtil.getConnection();
+             PreparedStatement q = conn.prepareStatement("SELECT total_spent FROM users WHERE phone = ?")) {
+            q.setString(1, phone);
+            try (java.sql.ResultSet rs = q.executeQuery()) {
+                if (rs.next()) {
+                    double total = rs.getDouble(1);
+                    assertEquals(85.0, total, 0.0001, "期望用户实际消费被计入，但实际为: " + total);
+                } else {
+                    fail("测试预置用户不存在");
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testUpdatePasswordByPhone_is_implemented() throws SQLException {
+        // 插入一个用户并尝试更新密码，当前实现未实现该方法，应被检测到
+        String phone = "18800001111";
+        try (java.sql.Connection conn = DBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement("INSERT OR REPLACE INTO users (id, username, phone, password, vip, login_count, last_login, total_spent) VALUES (?,?,?,?,?,?,?,?)")) {
+            ps.setString(1, "u-db-2");
+            ps.setString(2, "PwdTester");
+            ps.setString(3, phone);
+            ps.setString(4, "oldpass");
+            ps.setString(5, "NORMAL");
+            ps.setInt(6, 0);
+            ps.setString(7, null);
+            ps.setDouble(8, 0.0);
+            ps.executeUpdate();
+        }
+
+        com.marketplace.dao.UserDAO uda = new com.marketplace.dao.UserDAO();
+        uda.updatePasswordByPhone(phone, "newpass");
+
+        try (java.sql.Connection conn = DBUtil.getConnection();
+             PreparedStatement q = conn.prepareStatement("SELECT password FROM users WHERE phone = ?")) {
+            q.setString(1, phone);
+            try (java.sql.ResultSet rs = q.executeQuery()) {
+                if (rs.next()) {
+                    String pwd = rs.getString(1);
+                    assertEquals("newpass", pwd, "期望密码被更新为 newpass，但实际为: " + pwd);
+                } else {
+                    fail("测试预置用户不存在");
+                }
+            }
+        }
+    }
+
+    @Test
     public void testCreateOrderWithCoupon_marks_userCoupon_used() throws SQLException {
         Coupon c = new Coupon("m1", "SINGLE", 20.0, "2099-12-31", 2);
         CouponDAO cdao = new CouponDAO();
