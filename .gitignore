@@ -1,0 +1,15 @@
+# Ignore build outputs
+/target/
+marketplace/target/
+
+# Ignore local IDE files
+.idea/
+.vscode/
+*.iml
+
+# Ignore runtime database and logs
+marketplace/marketplace.db
+*.log
+
+# Dependency jars
+*.jar

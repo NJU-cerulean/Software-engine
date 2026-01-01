@@ -1,0 +1,107 @@
+{
+"1": {
+"CWE": "CWE-522",
+"name": "insufficientlyProtectedCredentialsUser",
+"File": "src/main/java/com/marketplace/service/AuthService.java",
+"Line": "34",
+"At": "ps.setString(4, password);"
+},
+"2": {
+"CWE": "CWE-522",
+"name": "insufficientlyProtectedCredentialsMerchant",
+"File": "src/main/java/com/marketplace/dao/MerchantDAO.java",
+"Line": "25",
+"At": "ps.setString(4, password);"
+},
+"3": {
+"CWE": "CWE-798",
+"name": "hardCodedAdminCredentials",
+"File": "src/main/java/com/marketplace/service/AuthService.java",
+"Line": "74",
+"At": "if(username.equals("admin") && password.equals("123456"))"
+},
+"4": {
+"CWE": "CWE-256",
+"name": "hardCodedDbAdminPassword",
+"File": "src/main/java/com/marketplace/db/DBUtil.java",
+"Line": "70",
+"At": "st.executeUpdate("INSERT OR IGNORE INTO admins (id, username, password) VALUES ('admin','admin','123456')");"
+},
+"5": {
+"CWE": "CWE-312",
+"name": "sensitiveInfoStoredPlaintextMessages",
+"File": "src/main/java/com/marketplace/service/MessageService.java",
+"Line": "147",
+"At": "ps.setString(4, content);"
+},
+"6": {
+"CWE": "CWE-476",
+"name": "possibleNullPointerOnUserMasked",
+"File": "src/main/java/com/marketplace/service/MessageService.java",
+"Line": "121",
+"At": "int debugLen = userMasked.length();"
+},
+"7": {
+"CWE": "CWE-770",
+"name": "resourceExhaustionFrequentConnections",
+"File": "src/main/java/com/marketplace/service/AuthService.java",
+"Line": "20",
+"At": "private final UserDAO userDAO = new UserDAO();"
+},
+"8": {
+"CWE": "CWE-327",
+"name": "passwordComparisonWithoutHashing",
+"File": "src/main/java/com/marketplace/service/AuthService.java",
+"Line": "52",
+"At": "if (stored.equals(password)) return true;"
+},
+"9": {
+"CWE": "CWE-327",
+"name": "merchantPasswordComparisonWithoutHashing",
+"File": "src/main/java/com/marketplace/service/AuthService.java",
+"Line": "67",
+"At": "return stored.equals(password);"
+},
+"10": {
+"CWE": "CWE-307",
+"name": "missingBruteForceProtectionUserLogin",
+"File": "src/main/java/com/marketplace/service/AuthService.java",
+"Line": "43",
+"At": "public boolean loginUser(String phone, String password) throws SQLException {"
+},
+"11": {
+"CWE": "CWE-307",
+"name": "missingBruteForceProtectionMerchantLogin",
+"File": "src/main/java/com/marketplace/service/AuthService.java",
+"Line": "60",
+"At": "public boolean loginMerchant(String phone, String password) throws SQLException {"
+},
+"12": {
+"CWE": "CWE-285",
+"name": "weakAdminAuthenticationLogic",
+"File": "src/main/java/com/marketplace/service/AuthService.java",
+"Line": "72",
+"At": "public boolean loginAdmin(String username, String password)"
+},
+"13": {
+"CWE": "CWE-732",
+"name": "overlyBroadClearAllDataOperation",
+"File": "src/main/java/com/marketplace/db/DBUtil.java",
+"Line": "81",
+"At": "st.executeUpdate("DELETE FROM admins");"
+},
+"14": {
+"CWE": "CWE-209",
+"name": "stackTraceInformationLeakDBInit",
+"File": "src/main/java/com/marketplace/db/DBUtil.java",
+"Line": "16",
+"At": "e.printStackTrace();"
+},
+"15": {
+"CWE": "CWE-252",
+"name": "ignoredSQLExceptionOnSchemaAlter",
+"File": "src/main/java/com/marketplace/service/MessageService.java",
+"Line": "92",
+"At": "catch (SQLException ignore) { /* 若无法补救，则继续抛原异常 */ }"
+}
+}

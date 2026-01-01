@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SpotBugs Report Table</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 16px; }
+        h1 { font-size: 20px; }
+        #summary { margin-top: 8px; font-size: 13px; }
+        #error { color: #b30000; margin-top: 8px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 12px; }
+        th { background: #f0f0f0; position: sticky; top: 0; }
+        tr:nth-child(even) { background: #fafafa; }
+        .p1 { color: #b30000; font-weight: bold; }
+        .p2 { color: #d98300; }
+        .p3 { color: #666666; }
+        .type, .file { font-family: monospace; }
+        textarea { width: 100%; height: 200px; font-family: monospace; font-size: 11px; }
+    </style>
+</head>
+<body>
+<h1>SpotBugs Report Table</h1>
+<div>第一步：把 <code>target/spotbugsXml.xml</code> 的全部内容复制到下面的文本框，然后点“解析”。</div>
+<div id="summary">尚未解析</div>
+<div id="error"></div>
+
+<textarea id="xml-input" placeholder="在这里粘贴 spotbugsXml.xml 的全部内容"></textarea>
+<button id="parse-btn">解析 XML 生成表格</button>
+
+<table id="bugsTable">
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>Priority</th>
+        <th>Type</th>
+        <th>Class</th>
+        <th>File:Line</th>
+        <th>Short Message</th>
+        <th>Long Message</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+(function () {
+    function priorityClass(p) {
+        if (p === "1") return "p1";
+        if (p === "2") return "p2";
+        return "p3";
+    }
+
+    function getText(elem, tagName) {
+        const tag = elem.getElementsByTagName(tagName)[0];
+        return tag ? tag.textContent.trim() : "";
+    }
+
+    function parseSourceLine(bugElem) {
+        const lines = bugElem.getElementsByTagName("SourceLine");
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.getAttribute("primary") === "true") {
+                const file = line.getAttribute("sourcefile") || "";
+                const start = line.getAttribute("start") || "";
+                return { file, start };
+            }
+        }
+        if (lines.length > 0) {
+            const line = lines[0];
+            return {
+                file: line.getAttribute("sourcefile") || "",
+                start: line.getAttribute("start") || ""
+            };
+        }
+        const msgs = bugElem.getElementsByTagName("Message");
+        for (let i = 0; i < msgs.length; i++) {
+            const m = msgs[i].textContent || "";
+            const match = m.match(/At (.+\.java):\[line (\d+)\]/);
+            if (match) {
+                return { file: match[1], start: match[2] };
+            }
+        }
+        return { file: "", start: "" };
+    }
+
+    function parseClassName(bugElem) {
+        const cls = bugElem.getElementsByTagName("Class")[0];
+        return cls ? (cls.getAttribute("classname") || "") : "";
+    }
+
+    function parseXml() {
+        const text = document.getElementById("xml-input").value;
+        const summaryEl = document.getElementById("summary");
+        const errorEl = document.getElementById("error");
+        const tbody = document.querySelector("#bugsTable tbody");
+        tbody.innerHTML = "";
+        errorEl.textContent = "";
+
+        if (!text.trim()) {
+            summaryEl.textContent = "请先在上面的文本框中粘贴 XML。";
+            return;
+        }
+
+        try {
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(text, "text/xml");
+            const bugsNodeList = xml.getElementsByTagName("BugInstance");
+
+            // 按优先级从小到大排序（1 高，3 低）
+            const bugs = Array.from(bugsNodeList).sort((a, b) => {
+                const pa = parseInt(a.getAttribute("priority") || "99", 10);
+                const pb = parseInt(b.getAttribute("priority") || "99", 10);
+                return pa - pb;
+            });
+
+            for (let i = 0; i < bugs.length; i++) {
+                const b = bugs[i];
+                const type = b.getAttribute("type") || "";
+                const priority = b.getAttribute("priority") || "";
+                const shortMsg = getText(b, "ShortMessage");
+                const longMsg = getText(b, "LongMessage");
+                const clsName = parseClassName(b);
+                const src = parseSourceLine(b);
+
+                const tr = document.createElement("tr");
+
+                const idxTd = document.createElement("td");
+                idxTd.textContent = String(i + 1);
+                tr.appendChild(idxTd);
+
+                const pTd = document.createElement("td");
+                pTd.textContent = priority;
+                pTd.className = priorityClass(priority);
+                tr.appendChild(pTd);
+
+                const typeTd = document.createElement("td");
+                typeTd.textContent = type;
+                typeTd.className = "type";
+                tr.appendChild(typeTd);
+
+                const clsTd = document.createElement("td");
+                clsTd.textContent = clsName;
+                tr.appendChild(clsTd);
+
+                const fileTd = document.createElement("td");
+                fileTd.textContent = src.file + (src.start ? (":" + src.start) : "");
+                fileTd.className = "file";
+                tr.appendChild(fileTd);
+
+                const sTd = document.createElement("td");
+                sTd.textContent = shortMsg;
+                tr.appendChild(sTd);
+
+                const lTd = document.createElement("td");
+                lTd.textContent = longMsg;
+                tr.appendChild(lTd);
+
+                tbody.appendChild(tr);
+            }
+
+            const summaryElem = xml.getElementsByTagName("FindBugsSummary")[0];
+            let summary = "Total bugs: " + bugs.length;
+            if (summaryElem) {
+                const p1 = summaryElem.getAttribute("priority_1") || "0";
+                const p2 = summaryElem.getAttribute("priority_2") || "0";
+                const p3 = summaryElem.getAttribute("priority_3") || "0";
+                summary += ` (P1=${p1}, P2=${p2}, P3=${p3})`;
+            }
+            summaryEl.textContent = summary;
+        } catch (err) {
+            summaryEl.textContent = "解析 XML 失败";
+            errorEl.textContent = err.message;
+        }
+    }
+
+    document.getElementById("parse-btn").addEventListener("click", parseXml);
+})();
+</script>
+</body>
+</html>
