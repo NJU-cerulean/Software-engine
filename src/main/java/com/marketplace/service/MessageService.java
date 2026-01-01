@@ -186,8 +186,8 @@ public class MessageService {
     // 掩码任意较长数字串（用于消息内容的安全展示）
     private String maskSensitiveNumbers(String text) {
         if (text == null) return null;
-        // 将连续 4 位以上的数字视为敏感信息并掩码
-        return text.replaceAll("(\\d{3})\\d+(\\d{2})", "$1****$2");
+        // 只掩码纯数字序列（长度至少 5）的中间部分，避免误掩码包含字母或短序列（如 productId）
+        return text.replaceAll("\\b(\\d{3})\\d+(\\d{2})\\b", "$1****$2");
     }
 
     private void sendMessage(String senderId, String receiverId, String content) throws SQLException {
